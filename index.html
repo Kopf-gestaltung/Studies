@@ -221,6 +221,11 @@
             opacity: 0.02 !important;
             transition: opacity 0.8s ease;
         }
+
+        /* Versteckt den Hinweis standardmäßig auf dem Desktop */
+.mobile-notice {
+    display: none;
+}
                 /* ================= MOBILE OPTIMIERUNG (UNTEREINANDER) ================= */
         @media (max-width: 768px) {
             html, body {
@@ -257,6 +262,21 @@
                 transform: none !important;
                 padding: 120px 20px 80px 20px !important; /* Platz für das Logo oben */
                 box-sizing: border-box !important;
+            }
+
+                        /* Zeigt den Hinweis nur auf Smartphones an */
+            .mobile-notice {
+                display: block !important;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 0.9rem;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                text-align: center;
+                color: #1a1a1a;
+                opacity: 0.6;
+                margin-bottom: 30px; /* Abstand zu den Videos darunter */
+                width: 100%;
+                order: -1; /* Zwingt den Text, in der Flexbox ganz oben zu stehen */
             }
 
             .video-container {
@@ -327,6 +347,9 @@
 
     <!-- Das frei ziehbare Canvas mit deinen EXAKTEN, neu kalibrierten Werten -->
     <div id="canvas">
+
+        <div class="mobile-notice">Please open on desktop</div>
+
         <div class="video-container size-l" data-x="80" data-y="0" data-parallax="0.9">
             <video class="mix-video" src="Studie_4_sound.mp4" loop muted playsinline></video>
         </div>
