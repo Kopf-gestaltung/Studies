@@ -274,7 +274,10 @@
             .video-container video {
                 width: 100% !important;
                 height: auto !important;
-                transform: none !important; /* Verhindert fehlerhaften Desktop-Zoom */
+                transform: none !important; /* Blockiert Desktop-Zoom auf Mobile */
+                
+                /* DIESE ZEILE DEAKTIVIERT DIE KLICKS & DEN FULLSCREEN AUF MOBILE: */
+                pointer-events: none !important; 
             }
 
             .video-container.active video { 
