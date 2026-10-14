@@ -261,7 +261,9 @@
             <video class="mix-video" src="Studie_3_sound.mp4" loop muted playsinline></video>
         </div>
     </div>
-    <script>
+<script>
+        const isMobile = window.innerWidth <= 768;
+
         const bgMusic = document.getElementById('bgMusic');
         const canvas = document.getElementById('canvas');
         const containers = document.querySelectorAll('.video-container');
@@ -293,6 +295,8 @@
 
         // Funktion zur Berechnung der perfekten Mitte
         function calculateCentering() {
+            if (isMobile) return; // Auf Mobile überspringen
+
             // 1. Horizontale Zentrierung (Breite - bleibt unverändert)
             const gridWidth = 1860; 
             const windowWidth = window.innerWidth;
@@ -306,10 +310,6 @@
             centerOffsetY = windowHeight / 2;
             
             // ================= REGLER FÜR DIE HÖHE =================
-            // Da das Grid durch deine data-y Werte nach unten drückt, 
-            // ziehen wir hier einen festen Pixelwert ab, um es perfekt auf Augenhöhe zu zentrieren.
-            // Wenn es noch weiter NACH OBEN soll, ERHÖHE die Zahl (z.B. auf -200 oder -250).
-            // Wenn es weiter NACH UNTEN soll, VERRINGERE die Zahl (z.B. auf -100).
             centerOffsetY = centerOffsetY - 300; 
             // =======================================================
             
@@ -318,7 +318,6 @@
             
             updatePositions();
         }
-
 
         function applyBrake(targetVal) {
             let absVal = Math.abs(targetVal);
@@ -335,8 +334,10 @@
             if (archiveStarted) return;
             archiveStarted = true;
             
-            bgMusic.play();
-            bgMusic.volume = 0.02; // Deine eingestellte Musik-Lautstärke
+            if (bgMusic) {
+                bgMusic.play().catch(err => console.log("Musik blockiert:", err));
+                bgMusic.volume = 0.02; 
+            }
             document.body.classList.add('archive-active');
             
             videos.forEach(video => {
@@ -358,25 +359,29 @@
         window.addEventListener('click', startArchive);
 
         function updatePositions() {
+            if (isMobile) return; // Auf Mobile überspringen
+            
             containers.forEach(container => {
                 const baseX = parseInt(container.getAttribute('data-x'));
                 const baseY = parseInt(container.getAttribute('data-y'));
                 const factor = parseFloat(container.getAttribute('data-parallax'));
                 
                 const finalX = baseX + centerOffsetX + (currentX * factor);
-                // KORREKTUR: centerOffsetY wird hier mathematisch hinzugerechnet
                 const finalY = baseY + centerOffsetY + (currentY * factor);
                 
                 container.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
             });
         }
 
-        calculateCentering();
-        window.addEventListener('resize', calculateCentering);
+        // Initiale Zentrierung nur auf Desktop
+        if (!isMobile) {
+            calculateCentering();
+            window.addEventListener('resize', calculateCentering);
+        }
 
-        // MAUSEVENTS (Ziehen)
+        // MAUSEVENTS (Ziehen) - Nur auf Desktop aktiv
         window.addEventListener('mousedown', (e) => {
-            if (isFullscreenActive) return; 
+            if (isMobile || isFullscreenActive) return; 
             if (e.button === 0 || e.button === 1) {
                 if (e.button === 1) e.preventDefault(); 
                 isDragging = true;
@@ -386,7 +391,7 @@
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (!isDragging || isFullscreenActive) return;
+            if (isMobile || !isDragging || isFullscreenActive) return;
             let rawX = e.clientX - startX;
             let rawY = e.clientY - startY;
             currentX = applyBrake(rawX);
@@ -397,9 +402,9 @@
         window.addEventListener('mouseup', () => isDragging = false);
         window.addEventListener('mouseleave', () => isDragging = false);
 
-        // MAUSRAD- UND TRACKPAD-SCROLL-STEUERUNG
+        // MAUSRAD- UND TRACKPAD-SCROLL-STEUERUNG - Nur auf Desktop aktiv
         window.addEventListener('wheel', (e) => {
-            if (isFullscreenActive) return; 
+            if (isMobile || isFullscreenActive) return; 
             let rawX = currentX - (e.deltaX * 0.5);
             let rawY = currentY - (e.deltaY * 0.5); 
             currentX = applyBrake(rawX);
@@ -411,8 +416,9 @@
         containers.forEach(container => {
             const video = container.querySelector('.mix-video');
 
+            // Hover-Effekte komplett deaktivieren auf Mobile
             container.addEventListener('mouseenter', () => {
-                if (!archiveStarted || isFullscreenActive) return;
+                if (isMobile || !archiveStarted || isFullscreenActive) return;
                 document.body.classList.add('video-hovered');
                 container.classList.add('active');
                 containers.forEach(c => {
@@ -422,7 +428,7 @@
             });
 
             container.addEventListener('mouseleave', () => {
-                if (!archiveStarted || isFullscreenActive) return;
+                if (isMobile || !archiveStarted || isFullscreenActive) return;
                 document.body.classList.remove('video-hovered');
                 container.classList.remove('active');
                 containers.forEach(c => c.classList.remove('dimmed'));
