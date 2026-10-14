@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studies – Audiovisual Archive</title>
+    
+    <!-- Google Fonts: Archivo -->
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Archivo:wght@300;400&display=swap" rel="stylesheet">
+
+    <style>
+        /* 1. HAUPT-SETUP FÜR DIE WEBSITE */
+        html, body {
+            background-color: #F5F5F5;
+            color: #1a1a1a;
+            font-family: 'Archivo', sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; 
+            cursor: grab; 
+            user-select: none;
+            transition: background-color 0.5s ease;
+        }
+
+        body:active { 
+            cursor: grabbing; 
+        }
+        
+        body.video-hovered { 
+            background-color: hsl(0, 0%, 75%);
+        }
+
+        /* 2. DIE LOGO-GRAFIK (RECHTS OBEN & START-BUTTON ZUGLEICH) */
+        header {
+            position: fixed;
+            top: 40px;
+            left: 40px; 
+            z-index: 101; 
+        }
+
+        .logo-image {
+            height: 8vh;
+            width: auto;
+            display: block;
+            opacity: 0.85;
+            cursor: pointer; 
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .logo-image:hover {
+            opacity: 1;
+            transform: scale(1.02);
+        }
+
+        body.archive-active .logo-image {
+            cursor: default;
+            opacity: 0.85;
+            transform: none;
+        }
+
+        /* 3. NEUER MONOCHROMER GRAIN (STAERKER, FEINER & GROEBER) */
+        .film-grain {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            right: -50%;
+            bottom: -50%;
+            width: 180%;
+            height: 180%;
+            /* Höhere Oktaven und Frequenz für feineres Rauschen im SVG */
+            background-image: url("data:image/svg+xml,%3Csvg%20viewBox%3D%270%200%20200%20200%27%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%3E%3Cfilter%20id%3D%27noiseFilter%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.95%27%20numOctaves%3D%275%27%20stitchTiles%3D%27stitch%27/%3E%3C/filter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23noiseFilter%29%27/%3E%3C/svg%3E");
+            /* Kontrast massiv erhoeht, um das Korn groeber und staerker hervortreten zu lassen */
+            filter: saturate(0) contrast(260%) brightness(110%); 
+            opacity: 0.05; /* Sichtbarkeit angehoben */
+            z-index: 999; 
+            pointer-events: none; 
+            animation: grainAnimation 0.3s steps(6) infinite; /* Schnelleres, raueres Flackern */
+        }
+
+        @keyframes grainAnimation {
+            0%, 100% { transform:translate(0, 0); }
+            10% { transform:translate(-1%, -2%); }
+            20% { transform:translate(-2%, 1%); }
+            30% { transform:translate(1%, -1%); }
+            40% { transform:translate(-1%, 2%); }
+            50% { transform:translate(-2%, 1%); }
+            60% { transform:translate(2%, -2%); }
+            70% { transform:translate(1%, 2%); }
+            80% { transform:translate(-2%, -1%); }
+            90% { transform:translate(1%, 1%); }
+        }
+
+        /* 4. ASYMMETRISCHES VIDEO-RASTER (DEINE ORIGINAL-WERTE) */
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            will-change: transform;
+        }
+
+        .video-container {
+            position: absolute;
+            will-change: transform;
+            transition: transform 2s cubic-bezier(0.25, 1, 0.25, 1);
+        }
+
+        .size-s  { width: 220px; }
+        .size-m  { width: 320px; }
+        .size-l  { width: 440px; }
+        .size-xl { width: 560px; }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+            transform-origin: center center;
+            will-change: transform, filter;
+            transition: transform 2s cubic-bezier(0.25, 1, 0.25, 1), filter 0.5s ease;
+        }
+
+        /* 5. INTERAKTIONS-HOVER DEINER NEUEN DATEI */
+        .video-container.active { 
+            z-index: 50; 
+        }
+        .video-container.active video { 
+            transform: scale(1.5); /* Dein geänderter Wert auf 150% */
+        }
+        .video-container.dimmed video { 
+            transform: scale(0.85); 
+            filter: blur(0px) brightness(0.75) sepia(0) hue-rotate(0deg) saturate(0.0);
+        }
+
+                /* 7. MINIMALISTISCHE UI ELEMENTE IN DEN ECKEN (FIXIERT) */
+        
+        /* Links unten: Typewriter Text */
+        #ui-bottom-left {
+            position: fixed;
+            bottom: 40px;
+            left: 40px;
+            z-index: 200;
+            font-family: 'Courier New', Courier, monospace; /* Reine Typewriter Schrift */
+            font-size: 1rem;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Rechts unten: Horizontale Striche (z.B. zwei Geviertstriche) */
+        #ui-bottom-right {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 200;
+            font-family: 'Courier New', Courier, monospace; /* Reine Typewriter Schrift */
+            font-size: 1rem;
+            letter-spacing: 2px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Rechts oben: Plus Symbol (unter/neben dem Studies-Logo platziert) */
+        #ui-top-right {
+            position: fixed;
+            top: 40px;
+            right: 40px;
+            z-index: 200;
+            font-family: 'Courier New', Courier, monospace; /* Reine Typewriter Schrift */
+            font-size: 1rem;
+            letter-spacing: 2px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* ================= DEINE NEUE STABILE KINOBÜHNE ================= */
+        #cinema-stage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: hsl(0, 0%, 75%); /* Exakter originaler Beigeton */
+            z-index: 800; /* Vor dem Canvas, hinter dem Filmkorn */
+            opacity: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.25, 1);
+        }
+
+        #cinema-stage.active {
+            opacity: 1; /* Tritt als solide, deckende Farbfläche auf */
+            pointer-events: auto;
+        }
+
+        #cinema-video {
+            height: 100vh;
+            width: 100vw;
+            object-fit: contain; /* Absolut keine Verzerrung der Proportionen */
+            transform: scale(0.6); /* Startet elegant verkleinert für einen edlen Zoom-In */
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.25, 1);
+            cursor: pointer;
+        }
+
+        #cinema-stage.active #cinema-video {
+            transform: scale(1); /* Zoomt weich auf volle Pracht auf */
+        }
+
+        /* Dimmt die restliche UI sanft weg, wenn ein Video isoliert ist */
+        body.has-fullscreen header,
+        body.has-fullscreen #ui-bottom-left,
+        body.has-fullscreen #ui-bottom-right,
+        body.has-fullscreen #ui-top-right {
+            opacity: 0.02 !important;
+            transition: opacity 0.8s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- Verwendet exakt deine Grafik aus deiner neuen Version -->
+        <img src="Studies_Website_Type_main.png" alt="Studies Logo" id="startBtn" class="logo-image">
+    </header>
+
+    <!-- Deine exakten UI Overlays aus deiner neuen Datei -->
+    <div id="ui-bottom-left">KOPFGESTALTUNG | 2026</div>
+    <div id="ui-bottom-right">| | | | |</div>
+    <div id="ui-top-right">| | | | |</div>
+
+    <!-- Das neue Kino-Bühnen-Overlay (Verhindert das Verrutschen deines Grids) -->
+    <div id="cinema-stage">
+        <video id="cinema-video" loop playsinline></video>
+    </div>
+
+    <!-- Globale Hintergrundmusik -->
+    <audio id="bgMusic" loop src="Studies_SD_Roomtone.wav"></audio>
+
+    <!-- Das frei ziehbare Canvas mit deinen EXAKTEN, neu kalibrierten Werten -->
+    <div id="canvas">
+        <div class="video-container size-l" data-x="80" data-y="0" data-parallax="0.9">
+            <video class="mix-video" src="Studie_4_sound.mp4" loop muted playsinline></video>
+        </div>
+        <div class="video-container size-s" data-x="440" data-y="-100" data-parallax="1.15">
+            <video class="mix-video" src="Studie_1_sound.mp4" loop muted playsinline></video>
+        </div>
+        <div class="video-container size-m" data-x="640" data-y="100" data-parallax="0.8">
+            <video class="mix-video" src="Studie_2_sound.mp4" loop muted playsinline></video>
+        </div>
+        <div class="video-container size-xl" data-x="920" data-y="-120" data-parallax="1.05">
+            <video class="mix-video" src="Studie_5_sound.mp4" loop muted playsinline></video>
+        </div>
+        <div class="video-container size-m" data-x="1420" data-y="120" data-parallax="0.75">
+            <video class="mix-video" src="Studie_3_sound.mp4" loop muted playsinline></video>
+        </div>
+    </div>
+    <script>
+        const bgMusic = document.getElementById('bgMusic');
+        const canvas = document.getElementById('canvas');
+        const containers = document.querySelectorAll('.video-container');
+        const videos = document.querySelectorAll('.mix-video');
+        
+        // Kinobühnen-Elemente
+        const cinemaStage = document.getElementById('cinema-stage');
+        const cinemaVideo = document.getElementById('cinema-video');
+
+        const FADE_IN_TIME = 2000;   
+        const FADE_OUT_TIME = 2000; 
+        const FADE_STEPS = 25;
+
+        let isDragging = false;
+        let startX, startY;
+        let currentX = 0, currentY = 0; 
+        let archiveStarted = false; 
+        let isFullscreenActive = false; 
+        let activeGridVideo = null; 
+
+        // ================= BEGRENZUNGS-REGELN AUS DEINER DATEI =================
+        const MAX_LIMIT = 1000;    
+        const BRAKE_START = 600;   
+        // =======================================================================
+
+        // Globale Offsets für die dynamische Zentrierung
+        let centerOffsetX = 0;
+        let centerOffsetY = 0; 
+
+        // Funktion zur Berechnung der perfekten Mitte
+        function calculateCentering() {
+            // 1. Horizontale Zentrierung (Breite - bleibt unverändert)
+            const gridWidth = 1860; 
+            const windowWidth = window.innerWidth;
+            centerOffsetX = (windowWidth - gridWidth) / 2;
+            if (centerOffsetX < 40) centerOffsetX = 40;
+            
+            // 2. Vertikale Zentrierung (Höhe)
+            const windowHeight = window.innerHeight;
+            
+            // BASIS-BERECHNUNG: Setzt den mathematischen Mittelpunkt
+            centerOffsetY = windowHeight / 2;
+            
+            // ================= REGLER FÜR DIE HÖHE =================
+            // Da das Grid durch deine data-y Werte nach unten drückt, 
+            // ziehen wir hier einen festen Pixelwert ab, um es perfekt auf Augenhöhe zu zentrieren.
+            // Wenn es noch weiter NACH OBEN soll, ERHÖHE die Zahl (z.B. auf -200 oder -250).
+            // Wenn es weiter NACH UNTEN soll, VERRINGERE die Zahl (z.B. auf -100).
+            centerOffsetY = centerOffsetY - 300; 
+            // =======================================================
+            
+            // Sicherheitsabstand nach oben
+            if (centerOffsetY < 40) centerOffsetY = 40;
+            
+            updatePositions();
+        }
+
+
+        function applyBrake(targetVal) {
+            let absVal = Math.abs(targetVal);
+            if (absVal > BRAKE_START) {
+                let excess = absVal - BRAKE_START;
+                let softVal = BRAKE_START + (excess * (1 - (excess / (MAX_LIMIT - BRAKE_START + excess))));
+                return Math.min(MAX_LIMIT, Math.max(-MAX_LIMIT, softVal)) * Math.sign(targetVal);
+            }
+            return targetVal;
+        }
+
+        // Zentrale Aktivierungsfunktion
+        function startArchive() {
+            if (archiveStarted) return;
+            archiveStarted = true;
+            
+            bgMusic.play();
+            bgMusic.volume = 0.02; // Deine eingestellte Musik-Lautstärke
+            document.body.classList.add('archive-active');
+            
+            videos.forEach(video => {
+                video.volume = 0;
+                video.muted = false;
+
+                if (video.duration) {
+                    video.currentTime = Math.random() * video.duration;
+                } else {
+                    video.addEventListener('loadedmetadata', () => {
+                        video.currentTime = Math.random() * video.duration;
+                    });
+                }
+                video.play().catch(err => console.log("Wiedergabe blockiert:", err));
+            });
+        }
+
+        // Globaler Klick-Start überall auf der Webseite
+        window.addEventListener('click', startArchive);
+
+        function updatePositions() {
+            containers.forEach(container => {
+                const baseX = parseInt(container.getAttribute('data-x'));
+                const baseY = parseInt(container.getAttribute('data-y'));
+                const factor = parseFloat(container.getAttribute('data-parallax'));
+                
+                const finalX = baseX + centerOffsetX + (currentX * factor);
+                // KORREKTUR: centerOffsetY wird hier mathematisch hinzugerechnet
+                const finalY = baseY + centerOffsetY + (currentY * factor);
+                
+                container.style.transform = `translate3d(${finalX}px, ${finalY}px, 0)`;
+            });
+        }
+
+        calculateCentering();
+        window.addEventListener('resize', calculateCentering);
+
+        // MAUSEVENTS (Ziehen)
+        window.addEventListener('mousedown', (e) => {
+            if (isFullscreenActive) return; 
+            if (e.button === 0 || e.button === 1) {
+                if (e.button === 1) e.preventDefault(); 
+                isDragging = true;
+                startX = e.clientX - currentX;
+                startY = e.clientY - currentY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging || isFullscreenActive) return;
+            let rawX = e.clientX - startX;
+            let rawY = e.clientY - startY;
+            currentX = applyBrake(rawX);
+            currentY = applyBrake(rawY);
+            updatePositions();
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('mouseleave', () => isDragging = false);
+
+        // MAUSRAD- UND TRACKPAD-SCROLL-STEUERUNG
+        window.addEventListener('wheel', (e) => {
+            if (isFullscreenActive) return; 
+            let rawX = currentX - (e.deltaX * 0.5);
+            let rawY = currentY - (e.deltaY * 0.5); 
+            currentX = applyBrake(rawX);
+            currentY = applyBrake(rawY);
+            updatePositions();
+        }, { passive: true }); 
+
+        // HOVER- & INTERAKTIONS-LOGIK
+        containers.forEach(container => {
+            const video = container.querySelector('.mix-video');
+
+            container.addEventListener('mouseenter', () => {
+                if (!archiveStarted || isFullscreenActive) return;
+                document.body.classList.add('video-hovered');
+                container.classList.add('active');
+                containers.forEach(c => {
+                    if (c !== container) c.classList.add('dimmed');
+                });
+                fadeInVideo(video);
+            });
+
+            container.addEventListener('mouseleave', () => {
+                if (!archiveStarted || isFullscreenActive) return;
+                document.body.classList.remove('video-hovered');
+                container.classList.remove('active');
+                containers.forEach(c => c.classList.remove('dimmed'));
+                fadeOutVideo(video);
+            });
+
+            // Klick klont das Video unbemerkt auf die Kinobühne
+            container.addEventListener('click', (e) => {
+                if (!archiveStarted) {
+                    startArchive();
+                    return;
+                }
+                e.stopPropagation();
+
+                if (!isFullscreenActive) {
+                    isFullscreenActive = true;
+                    activeGridVideo = video; 
+
+                    // Übertrage Zustand & synchrone Zeit nahtlos nach vorne
+                    cinemaVideo.src = video.src;
+                    cinemaVideo.currentTime = video.currentTime;
+                    cinemaVideo.volume = 0;
+                    
+                    document.body.classList.add('has-fullscreen');
+                    cinemaStage.classList.add('active');
+                    
+                    cinemaVideo.play().catch(err => console.log(err));
+                    fadeInVideo(cinemaVideo);
+                }
+            });
+        });
+
+        // Klick auf das Vollbild-Video schließt die Ansicht wieder flüssig
+        cinemaVideo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!isFullscreenActive) return;
+
+            isFullscreenActive = false;
+            document.body.classList.remove('has-fullscreen');
+            cinemaStage.classList.remove('active');
+
+            // Zeit zurück auf das originale Grid-Video übertragen
+            if (activeGridVideo) {
+                activeGridVideo.currentTime = cinemaVideo.currentTime;
+            }
+
+            // Blende den Ton aus und kappe danach die Quelle für maximale Performance
+            clearInterval(cinemaVideo.fadeInterval);
+            const stepInterval = FADE_OUT_TIME / FADE_STEPS;
+            cinemaVideo.fadeInterval = setInterval(() => {
+                if (cinemaVideo.volume > 0.05) {
+                    cinemaVideo.volume = Math.max(0, cinemaVideo.volume - (1 / FADE_STEPS));
+                } else {
+                    clearInterval(cinemaVideo.fadeInterval);
+                    cinemaVideo.pause();
+                    cinemaVideo.src = ""; 
+                }
+            }, stepInterval);
+
+            // Setzt alle Grid-Hoverzustände zurück
+            document.body.classList.remove('video-hovered');
+            containers.forEach(c => {
+                c.classList.remove('active');
+                c.classList.remove('dimmed');
+                const v = c.querySelector('.mix-video');
+                if (v) v.volume = 0;
+            });
+        });
+
+        // SOUND-FADING LOGIKEN
+        function fadeInVideo(vid) {
+            clearInterval(vid.fadeInterval);
+            vid.muted = false;
+            const stepInterval = FADE_IN_TIME / FADE_STEPS;
+            vid.fadeInterval = setInterval(() => {
+                if (vid.volume < 1.0) {
+                    vid.volume = Math.min(1, vid.volume + (1 / FADE_STEPS));
+                } else {
+                    clearInterval(vid.fadeInterval);
+                }
+            }, stepInterval);
+        }
+
+        function fadeOutVideo(vid) {
+            clearInterval(vid.fadeInterval);
+            const stepInterval = FADE_OUT_TIME / FADE_STEPS;
+            vid.fadeInterval = setInterval(() => {
+                if (vid.volume > 0.0) {
+                    vid.volume = Math.max(0, vid.volume - (1 / FADE_STEPS));
+                } else {
+                    clearInterval(vid.fadeInterval);
+                }
+            }, stepInterval);
+        }
+    </script>
+    
+    <!-- Monochromes Rauschen (Film Grain) -->
+    <div class="film-grain"></div>
+
+    <!-- MINIMALIST UI OVERLAYS (STARR & UNBEWEGLICH) -->
+    
+    <!-- Links unten: Typewriter Schrift -->
+    <div id="ui-bottom-left">KOPFGESTALTUNG | 2026</div>
+
+    <!-- Rechts unten: Horizontale Striche -->
+    <div id="ui-bottom-right">| | | | |</div>
+
+    <!-- Rechts oben: Plus Symbol (sitzt neben/unter dem Logo) -->
+    <div id="ui-top-right">| | | | |</div>
+
+</body>
+</html>
