@@ -438,10 +438,12 @@
             if (archiveStarted) return;
             archiveStarted = true;
             
-            if (bgMusic) {
+            // NUR auf dem Desktop abspielen, auf Mobile komplett ignorieren:
+            if (!isMobile && bgMusic) {
                 bgMusic.play().catch(err => console.log("Musik blockiert:", err));
-                bgMusic.volume = 0.02; 
+                bgMusic.volume = 0.02; // Deine eingestellte Musik-Lautstärke
             }
+            
             document.body.classList.add('archive-active');
             
             videos.forEach(video => {
