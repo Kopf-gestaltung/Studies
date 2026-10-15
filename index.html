@@ -294,10 +294,9 @@
             .video-container video {
                 width: 100% !important;
                 height: auto !important;
-                transform: none !important; /* Blockiert Desktop-Zoom auf Mobile */
-                
-                /* DIESE ZEILE DEAKTIVIERT DIE KLICKS & DEN FULLSCREEN AUF MOBILE: */
-                pointer-events: none !important; 
+                transform: none !important;
+                /* pointer-events: none !important; <- DIESE ZEILE ENTFERNEN ODER AUSKOMMENTIEREN */
+                cursor: pointer !important;
             }
 
             .video-container.active video { 
@@ -540,7 +539,7 @@
                 fadeOutVideo(video);
             });
 
-            // Klick klont das Video unbemerkt auf die Kinobühne
+            // Klick öffnet die Kinobühne (Überall aktiv, steuert Sound mobil sicher)
             container.addEventListener('click', (e) => {
                 if (!archiveStarted) {
                     startArchive();
@@ -552,56 +551,52 @@
                     isFullscreenActive = true;
                     activeGridVideo = video; 
 
-                    // Übertrage Zustand & synchrone Zeit nahtlos nach vorne
                     cinemaVideo.src = video.src;
                     cinemaVideo.currentTime = video.currentTime;
-                    cinemaVideo.volume = 0;
+                    
+                    if (isMobile) {
+                        cinemaVideo.muted = false;
+                        cinemaVideo.volume = 0.5; // Feste Lautstärke für Smartphones
+                    } else {
+                        cinemaVideo.volume = 0;
+                        fadeInVideo(cinemaVideo);
+                    }
                     
                     document.body.classList.add('has-fullscreen');
                     cinemaStage.classList.add('active');
                     
                     cinemaVideo.play().catch(err => console.log(err));
-                    fadeInVideo(cinemaVideo);
                 }
             });
         });
+
+        // Funktion zum sauberen und radikalen Stoppen des Videos (wichtig für Mobile!)
+        function closeCinemaStage() {
+            if (!isFullscreenActive) return;
+            isFullscreenActive = false;
+            
+            cinemaStage.classList.remove('active');
+            document.body.classList.remove('has-fullscreen');
+            
+            // Killt den Audio-Prozess auf Smartphones im Hintergrund sofort komplett
+            cinemaVideo.pause();
+            cinemaVideo.removeAttribute('src'); 
+            cinemaVideo.load();                 
+            activeGridVideo = null;
+        }
 
         // Klick auf das Vollbild-Video schließt die Ansicht wieder flüssig
         cinemaVideo.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (!isFullscreenActive) return;
-
-            isFullscreenActive = false;
-            document.body.classList.remove('has-fullscreen');
-            cinemaStage.classList.remove('active');
-
-            // Zeit zurück auf das originale Grid-Video übertragen
-            if (activeGridVideo) {
-                activeGridVideo.currentTime = cinemaVideo.currentTime;
-            }
-
-            // Blende den Ton aus und kappe danach die Quelle für maximale Performance
-            clearInterval(cinemaVideo.fadeInterval);
-            const stepInterval = FADE_OUT_TIME / FADE_STEPS;
-            cinemaVideo.fadeInterval = setInterval(() => {
-                if (cinemaVideo.volume > 0.05) {
-                    cinemaVideo.volume = Math.max(0, cinemaVideo.volume - (1 / FADE_STEPS));
-                } else {
-                    clearInterval(cinemaVideo.fadeInterval);
-                    cinemaVideo.pause();
-                    cinemaVideo.src = ""; 
-                }
-            }, stepInterval);
-
-            // Setzt alle Grid-Hoverzustände zurück
-            document.body.classList.remove('video-hovered');
-            containers.forEach(c => {
-                c.classList.remove('active');
-                c.classList.remove('dimmed');
-                const v = c.querySelector('.mix-video');
-                if (v) v.volume = 0;
-            });
+            closeCinemaStage();
         });
+
+        // Schließen per Klick auf die Bühne außerhalb des Videos
+        cinemaStage.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeCinemaStage();
+        });
+
 
         // SOUND-FADING LOGIKEN
         function fadeInVideo(vid) {
